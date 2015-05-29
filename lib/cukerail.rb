@@ -8,6 +8,8 @@ module Cukerail
     end
 
     def after_test_case(test_case,result)
+      #guard clause
+      return false unless test_case.tags.any?{|tag| tag.name =~/project/} && test_case.tags.any?{|tag| tag.name=~/suite/} 
       feature = test_case.feature
       #      ap feature.methods - Object.methods
       #      ap feature.tags
