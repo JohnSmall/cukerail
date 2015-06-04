@@ -45,7 +45,7 @@ module Cukerail
     def get_id(test_case)
       #      ap test_case.methods - Object.methods
       tagged_id = test_case.tags.select{|tag| tag.name =~/testcase/}.first
-      tags = test_case.tags + test_case.feature.tags
+      tags = all_tags(test_case) 
       project_id = /\d+/.match(tags.select{|tag| tag.name =~/project/}.first.name)[0] 
       suite_id = /\d+/.match(tags.select{|tag| tag.name =~/suite/}.first.name)[0] 
       title = extract_title(test_case)
@@ -125,13 +125,20 @@ module Cukerail
       report_on_result =  {status_id:testrail_status[:id],comment:failure_message,defects:defects}
       @conn.send_post("add_result_for_case/#{testrun}/#{id}",report_on_result)
     end
+
     def extract_title(test_case)
+      requirements_tags = all_tags(test_case).select{|tag| tag.name =~ /req_\w+/}.map{|tag| /req_(\w+)/.match(tag.name)[1]}.join(', ')
       if test_case.source.last.is_a?(Cucumber::Core::Ast::ExamplesTable::Row)
         title  = test_case.source.select{|s| s.is_a?(Cucumber::Core::Ast::ScenarioOutline)}.first.title
         title += " "+test_case.source.last.send(:data).map{|key,value| "#{key}=#{value}"}.join(', ')
       else
         title = test_case.source.last.title
       end
+      [requirements_tags,title].compact.join(' ').strip
+    end
+
+    def all_tags(test_case)
+      test_case.tags + test_case.feature.tags
     end
 
   end
