@@ -2,9 +2,9 @@ require "cukerail/version"
 require "cukerail/testrail"
 module Cukerail
   class Sender
-    attr_reader :conn
+    attr_reader :testrail_api_client,:failed_step
     def initialize(runtime, io, options)
-      @conn = TestRail::APIClient.new(ENV['TESTRAIL_BASE_URL'],ENV['TESTRAIL_USER'],ENV['TESTRAIL_PASSWORD'])
+      @testrail_api_client = TestRail::APIClient.new(ENV['TESTRAIL_BASE_URL'],ENV['TESTRAIL_USER'],ENV['TESTRAIL_PASSWORD'])
     end
 
     def after_test_case(test_case,result)
@@ -16,7 +16,9 @@ module Cukerail
       @id = get_id(test_case)
       raise 'No id found' unless @id
       send_steps(test_case,@id)
-      send_result(test_case,result,@id,ENV['TESTRUN']) if ENV['TESTRUN']
+      if ENV['TESTRUN']
+        send_result(test_case,result,@id,ENV['TESTRUN']) 
+      end
     end
 
     def tag_name(tag_name)
@@ -31,8 +33,8 @@ module Cukerail
     def after_test_step(step,result)
       unless result.passed?
         # only the first non-passed step
-        @failed_step[:step]   ||= step
-        @failed_step[:result] ||= result
+        failed_step[:step]   ||= step
+        failed_step[:result] ||= result
       end
     end
 
@@ -49,7 +51,7 @@ module Cukerail
       project_id = /\d+/.match(tags.select{|tag| tag.name =~/project/}.first.name)[0] 
       suite_id = /\d+/.match(tags.select{|tag| tag.name =~/suite/}.first.name)[0] 
       title = extract_title(test_case)
-      found_case = @conn.send_get("get_cases/#{project_id}&suite_id=#{suite_id}").select{|c| c['title'] == title}.first
+      found_case = testrail_api_client.send_get("get_cases/#{project_id}&suite_id=#{suite_id}").select{|c| c['title'] == title}.first
       if found_case
         result= found_case['id']
       else
@@ -91,14 +93,14 @@ module Cukerail
       end.join("\n")
       is_manual = test_case.tags.any?{|tag| tag.name =~/manual/}
       data = {'title'=>extract_title(test_case),'type_id'=>(is_manual ? 7 : 1 ),'custom_steps'=>steps_as_string}
-      @conn.send_post("update_case/#{id}",data)
+      testrail_api_client.send_post("update_case/#{id}",data)
     end
 
     def create_new_case(project_id,suite_id,sub_section_id,test_case)
       is_manual = test_case.tags.any?{|tag| tag.name =~/manual/}
       steps_as_string = test_case.test_steps.map{|step| step.source.last}.select{|step| step.is_a?(Cucumber::Core::Ast::Step)}.map{|step| "#{step.keyword}#{step.name}"}.join("\n")
       data = {'title'=>extract_title(test_case),'type_id'=>(is_manual ? 7 : 1 ),'custom_steps'=>steps_as_string}
-      @conn.send_post("add_case/#{sub_section_id || suite_id}", data)
+      testrail_api_client.send_post("add_case/#{sub_section_id || suite_id}", data)
     end
 
     def send_result(test_case,result,id,testrun)
@@ -123,7 +125,11 @@ module Cukerail
       end
       defects = test_case.tags.select{|tag| tag.name =~/jira_/}.map{|ticket| /STORE-\d+/.match(ticket.name)[0]}.join(" ")
       report_on_result =  {status_id:testrail_status[:id],comment:failure_message,defects:defects}
-      @conn.send_post("add_result_for_case/#{testrun}/#{id}",report_on_result)
+      begin
+        testrail_api_client.send_post("add_result_for_case/#{testrun}/#{id}",report_on_result)
+      rescue => e
+        puts "#{e.message} testrun=#{testrun} test case id=#{id}"
+      end
     end
 
     def extract_title(test_case)
