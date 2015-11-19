@@ -92,14 +92,22 @@ module Cukerail
         str
       end.join("\n")
       is_manual = test_case.tags.any?{|tag| tag.name =~/manual/}
-      data = {'title'=>extract_title(test_case),'type_id'=>(is_manual ? 7 : 1 ),'custom_steps'=>steps_as_string}
+      data = {'title'=>extract_title(test_case),
+              'type_id'=>(is_manual ? 7 : 1 ),
+              'custom_steps'=>steps_as_string,
+              'refs'=>defects(test_case)
+              }
       testrail_api_client.send_post("update_case/#{id}",data)
     end
 
     def create_new_case(project_id,suite_id,sub_section_id,test_case)
       is_manual = test_case.tags.any?{|tag| tag.name =~/manual/}
       steps_as_string = test_case.test_steps.map{|step| step.source.last}.select{|step| step.is_a?(Cucumber::Core::Ast::Step)}.map{|step| "#{step.keyword}#{step.name}"}.join("\n")
-      data = {'title'=>extract_title(test_case),'type_id'=>(is_manual ? 7 : 1 ),'custom_steps'=>steps_as_string}
+      data = {'title'=>extract_title(test_case),
+              'type_id'=>(is_manual ? 7 : 1 ),
+              'custom_steps'=>steps_as_string,
+              'refs'=>defects(test_case)
+              }
       testrail_api_client.send_post("add_case/#{sub_section_id || suite_id}", data)
     end
 
@@ -123,8 +131,7 @@ module Cukerail
       else
         failure_message = nil
       end
-      defects = test_case.tags.select{|tag| tag.name =~/jira_/}.map{|ticket| /STORE-\d+/.match(ticket.name)[0]}.join(" ")
-      report_on_result =  {status_id:testrail_status[:id],comment:failure_message,defects:defects}
+      report_on_result =  {status_id:testrail_status[:id],comment:failure_message,defects:defects(test_case)}
       begin
         testrail_api_client.send_post("add_result_for_case/#{testrun}/#{id}",report_on_result)
       rescue => e
@@ -145,6 +152,10 @@ module Cukerail
 
     def all_tags(test_case)
       test_case.tags + test_case.feature.tags
+    end
+
+    def defects(test_case)
+      all_tags(test_case).select{|tag| tag.name =~/jira_/}.map{|ticket| /STORE-\d+/.match(ticket.name)[0]}.join(" ")
     end
 
   end
