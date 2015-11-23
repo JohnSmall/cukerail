@@ -4,6 +4,10 @@ module Cukerail
   class Sender
     attr_reader :testrail_api_client,:failed_step
     def initialize(runtime, io, options)
+      puts 'in initialize'
+      if %w(BASE_URL USER PASSWORD).map{|e| ENV["TESTRAIL_#{e}"]}.any?{|e| e=='' || !e}
+        raise 'You need to setup Testrail environment parameters see https://bbcworldwide.atlassian.net/wiki/display/BAR/Installing+and+Running+Cukerail' 
+      end
       @testrail_api_client = TestRail::APIClient.new(ENV['TESTRAIL_BASE_URL'],ENV['TESTRAIL_USER'],ENV['TESTRAIL_PASSWORD'])
     end
 
