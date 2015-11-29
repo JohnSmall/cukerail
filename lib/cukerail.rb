@@ -87,7 +87,9 @@ module Cukerail
     end
 
     def send_steps(test_case,id)
-      steps_as_string = test_case.test_steps.map{|step| step.source.last}.select{|step| step.is_a?(Cucumber::Core::Ast::Step)}.map do | step |
+      steps_as_string = test_case.test_steps.map{|step| step.source.last}
+         .select{|step| step.is_a?(Cucumber::Core::Ast::Step) && step.respond_to?(:gherkin_statement)}
+         .reject{|step| step.is_a?(Cucumber::Hooks::BeforeHook)}.map do | step |
         g = step.gherkin_statement
         str = g.keyword+g.name
         g.rows.each do | row |
@@ -127,10 +129,18 @@ module Cukerail
                           {id:6,comment: 'pending step'}
                         end
       unless result.passed?
+        # the before step can fail. So we have to check
+        if @failed_step[:step].source.last.is_a?(Cucumber::Hooks::BeforeHook)
+          failed_step = 'failed in the before hook'
+          location = 'before hook'
+        else
+          failed_step = "#{@failed_step[:step].source.last.keyword}#{@failed_step[:step].source.last.name}"
+          location=@failed_step[:step].source.last.file_colon_line
+        end
         failure_message = <<-FAILURE
         Error message: #{testrail_status[:comment]} #{result.exception.message}
-        Step: #{@failed_step[:step].source.last.keyword}#{@failed_step[:step].source.last.name}
-        Location: #{@failed_step[:step].source.last.file_colon_line}
+        Step: #{failed_step}
+        Location: #{location}
         FAILURE
       else
         failure_message = nil
