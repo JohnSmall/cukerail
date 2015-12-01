@@ -4,7 +4,6 @@ module Cukerail
   class Sender
     attr_reader :testrail_api_client,:failed_step
     def initialize(runtime, io, options)
-      puts 'in initialize'
       if %w(BASE_URL USER PASSWORD).map{|e| ENV["TESTRAIL_#{e}"]}.any?{|e| e=='' || !e}
         raise 'You need to setup Testrail environment parameters see https://bbcworldwide.atlassian.net/wiki/display/BAR/Installing+and+Running+Cukerail' 
       end
@@ -88,8 +87,8 @@ module Cukerail
 
     def send_steps(test_case,id)
       steps_as_string = test_case.test_steps.map{|step| step.source.last}
-         .select{|step| step.is_a?(Cucumber::Core::Ast::Step) && step.respond_to?(:gherkin_statement)}
-         .reject{|step| step.is_a?(Cucumber::Hooks::BeforeHook)}.map do | step |
+      .select{|step| step.is_a?(Cucumber::Core::Ast::Step) && step.respond_to?(:gherkin_statement)}
+      .reject{|step| step.is_a?(Cucumber::Hooks::BeforeHook)}.map do | step |
         g = step.gherkin_statement
         str = g.keyword+g.name
         g.rows.each do | row |
@@ -102,7 +101,7 @@ module Cukerail
               'type_id'=>(is_manual ? 7 : 1 ),
               'custom_steps'=>steps_as_string,
               'refs'=>defects(test_case)
-              }
+      }
       testrail_api_client.send_post("update_case/#{id}",data)
     end
 
@@ -113,7 +112,7 @@ module Cukerail
               'type_id'=>(is_manual ? 7 : 1 ),
               'custom_steps'=>steps_as_string,
               'refs'=>defects(test_case)
-              }
+      }
       testrail_api_client.send_post("add_case/#{sub_section_id || suite_id}", data)
     end
 
@@ -149,7 +148,12 @@ module Cukerail
       begin
         testrail_api_client.send_post("add_result_for_case/#{testrun}/#{id}",report_on_result)
       rescue => e
-        puts "#{e.message} testrun=#{testrun} test case id=#{id}"
+        if e.message =~ /No \(active\) test found for the run\/case combination/
+          add_case_to_test_run(id,testrun)
+          retry
+        else
+          puts "#{e.message} testrun=#{testrun} test case id=#{id}"
+        end
       end
     end
 
@@ -164,12 +168,45 @@ module Cukerail
       [requirements_tags,title].compact.join(' ').strip
     end
 
+    def get_run(run_id)
+      testrail_api_client.send_get("get_run/#{run_id}")
+    end
+
+    def get_tests_in_a_run(run_id)
+      testrail_api_client.send_get("get_tests/#{run_id}")
+    end
+
     def all_tags(test_case)
       test_case.tags + test_case.feature.tags
     end
 
     def defects(test_case)
       all_tags(test_case).select{|tag| tag.name =~/jira_/}.map{|ticket| /STORE-\d+/.match(ticket.name)[0]}.join(" ")
+    end
+
+    def update_run(testrun,case_ids)
+      begin
+        testrail_api_client.send_post("update_run/#{testrun}",case_ids)
+      rescue => e
+        puts "#{e.message} testrun=#{testrun} test case ids=#{case_ids}"
+      end
+    end
+
+    def remove_case_from_test_run(testcase,testrun)
+      testcase_id = get_id(testcase)
+      run = get_run(testrun)
+      unless run['include_all']
+        case_ids = get_tests_in_a_run(testrun).map{|h| h['case_id']} - [testcase_id]
+        update_run(testrun,{'case_ids'=>case_ids})
+      end
+    end
+
+    def add_case_to_test_run(testcase_id,testrun)
+      run = get_run(testrun)
+      unless run['include_all']
+        case_ids = get_tests_in_a_run(testrun).map{|h| h['case_id']} + [testcase_id]
+        update_run(testrun,{'case_ids'=>case_ids})
+      end
     end
 
   end
