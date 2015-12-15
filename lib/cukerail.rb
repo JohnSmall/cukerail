@@ -132,6 +132,9 @@ module Cukerail
         if @failed_step[:step].source.last.is_a?(Cucumber::Hooks::BeforeHook)
           failed_step = 'failed in the before hook'
           location = 'before hook'
+        elsif @failed_step[:step].source.last.is_a?(Cucumber::Hooks::AfterHook)
+          failed_step = 'failed in the after hook'
+          location = 'after hook'
         else
           failed_step = "#{@failed_step[:step].source.last.keyword}#{@failed_step[:step].source.last.name}"
           location=@failed_step[:step].source.last.file_colon_line
