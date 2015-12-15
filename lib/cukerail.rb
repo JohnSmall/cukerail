@@ -22,6 +22,8 @@ module Cukerail
       if ENV['TESTRUN']
         send_result(test_case,result,@id,ENV['TESTRUN']) 
       end
+    rescue StandardError => e
+      puts "#{e.message} in #{extract_title(test_case)}"
     end
 
     def tag_name(tag_name)
