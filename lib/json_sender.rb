@@ -1,6 +1,6 @@
 require_relative "cukerail/version"
 require_relative "cukerail/testrail"
-require 'json'
+require 'json' unless JSON 
 module Cukerail
   class JsonSender
     attr_reader :testrail_api_client,:results

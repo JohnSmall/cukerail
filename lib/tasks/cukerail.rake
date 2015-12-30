@@ -1,9 +1,4 @@
 require_relative '../json_sender'
-desc 'a temp task'
-task :temp do
-  puts 'temp'
-end
-
 desc 'load a json results file into a test suite'
 task :load_to_suite do
   raise 'You must have JSON=filename on the command line' unless ENV['JSON']
