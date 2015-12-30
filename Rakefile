@@ -1,6 +1,6 @@
 require 'rspec/core/rake_task'
 require 'bundler/gem_tasks'
-
+import './lib/tasks/cukerail.rake'
 # Default directory to look in is `/specs`
 # # Run with `rake spec`
 RSpec::Core::RakeTask.new(:spec) do |task|
