@@ -33,11 +33,12 @@ module Cukerail
     end
 
     def extract_top_level_data(feature)
+      puts "feature file #{feature['uri']}"
       project_id = feature['tags'].select{|j| j['name']=~/project_\d+/}.map{|j| /project_(\d+)/.match(j['name'])[1].to_i}.first
       suite_id = feature['tags'].select{|j| j['name']=~/suite_\d+/}.map{|j| /suite_(\d+)/.match(j['name'])[1].to_i}.first
       sub_section_id = feature['tags'].select{|j| j['name']=~/sub_section_\d+/}.map{|j| /sub_section_(\d+)/.match(j['name'])[1].to_i}.first
       background=feature['elements'].select{|e| e['keyword']=='Background'}.first
-      background_steps = background['steps'].map{|s| s['keyword']+s['name']}.join("\n")
+      background_steps = background ? background['steps'].map{|s| s['keyword']+s['name']}.join("\n") : ''
       return project_id,suite_id,sub_section_id,background_steps
     end
 
