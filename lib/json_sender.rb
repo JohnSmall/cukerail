@@ -1,6 +1,7 @@
 require_relative "cukerail/version"
 require_relative "cukerail/testrail"
 require 'json' unless JSON 
+require 'awesome_print'
 module Cukerail
   class JsonSender
     attr_reader :testrail_api_client,:results
@@ -117,42 +118,46 @@ module Cukerail
     end
 
     def get_run(run_id)
-      testrail_api_client.send_get("get_run/#{run_id}")
+      @test_run ||= testrail_api_client.send_get("get_run/#{run_id}")
+      ap @test_run
+      puts "test plan = #{@test_run['plan_id']}"
+      @test_run
     end
 
     def get_tests_in_a_run(run_id)
-      testrail_api_client.send_get("get_tests/#{run_id}")
+      @all_tests ||= testrail_api_client.send_get("get_tests/#{run_id}")
     end
 
-    def update_run(testrun,case_ids)
+    def update_run(testrun_id,case_ids)
+      run = get_run(testrun_id)
       begin
-        testrail_api_client.send_post("update_run/#{testrun}",case_ids)
+        testrail_api_client.send_post("update_run/#{testrun_id}",case_ids)
       rescue => e
-        puts "#{e.message} testrun=#{testrun} test case ids=#{case_ids}"
+        puts "#{e.message} testrun=#{testrun_id} test case ids=#{case_ids}"
       end
     end
 
-    def remove_case_from_test_run(testcase,testrun)
+    def remove_case_from_test_run(testcase,testrun_id)
       testcase_id = get_id(testcase)
-      run = get_run(testrun)
+      run = get_run(testrun_id)
       unless run['include_all']
-        case_ids = get_tests_in_a_run(testrun).map{|h| h['case_id']} - [testcase_id]
-        update_run(testrun,{'case_ids'=>case_ids})
+        case_ids = get_tests_in_a_run(testrun_id).map{|h| h['case_id']} - [testcase_id]
+        update_run(testrun_id,{'case_ids'=>case_ids})
       end
     end
 
     def add_case_to_test_run(testcase_id,testrun)
-      run = get_run(testrun)
+      run = get_run(testrun_id)
       unless run['include_all']
-        case_ids = get_tests_in_a_run(testrun).map{|h| h['case_id']} + [testcase_id]
-        update_run(testrun,{'case_ids'=>case_ids})
+        case_ids = get_tests_in_a_run(testrun_id).map{|h| h['case_id']} + [testcase_id]
+        update_run(testrun_id,{'case_ids'=>case_ids})
       end
     end
 
-    def remove_all_except_these_cases_from_testrun(testcases,testrun)
-      run = get_run(testrun)
+    def remove_all_except_these_cases_from_testrun(testcases,testrun_id)
+      run = get_run(testrun_id)
       unless run['include_all']
-        case_ids = get_tests_in_a_run(testrun).map{|h| h['case_id']} & testcases
+        case_ids = get_tests_in_a_run(testrun_id).map{|h| h['case_id']} & testcases
         update_run(testrun,{'case_ids'=>case_ids})
       end
     end
