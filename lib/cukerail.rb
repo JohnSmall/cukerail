@@ -186,7 +186,7 @@ module Cukerail
     end
 
     def defects(test_case)
-      all_tags(test_case).select{|tag| tag.name =~/jira_/}.map{|ticket| /\w+-\d+/.match(ticket.name)[0]}.join(" ")
+      all_tags(test_case).select{|tag| tag.name =~/jira_/}.map{|ticket| /jira_(\w+-\d+)$/.match(ticket.name)[1]}.join(" ")
     end
 
     def update_run(testrun,case_ids)
