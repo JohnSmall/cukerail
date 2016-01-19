@@ -30,7 +30,7 @@ task :load_to_test_run do
     testcase_id = json_sender.get_id(scenario,background_steps,project_id,suite_id,sub_section_id)
     puts "scenario_id #{scenario['id']} testcase_id = #{testcase_id}"
     json_sender.send_steps(scenario,background_steps,testcase_id)
-    json_sender.send_result(scenario,testcase_id,ENV['TESTRUN'])
+    json_sender.send_result(scenario,testcase_id,ENV['TESTRUN'].to_i)
   end
   end
 end
@@ -46,7 +46,7 @@ task :remove_from_test_run do
     testcase_ids << json_sender.get_id(scenario,background_steps,project_id,suite_id,sub_section_id)
   end  
   end  
-  json_sender.remove_all_except_these_cases_from_testrun(testcase_ids,ENV['TESTRUN'])
+  json_sender.remove_all_except_these_cases_from_testrun(testcase_ids,ENV['TESTRUN'].to_i)
 end
 
 desc "match test run cases to json results file"

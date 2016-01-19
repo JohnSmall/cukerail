@@ -76,14 +76,14 @@ module Cukerail
 
     def defects(scenario)
       if scenario['tags']
-        scenario['tags'].select{|t| t['name'] =~/@jira_/}.map{|t| /jira_(\w+-\w+)/.match(t['name'])}.join(' ')
+        scenario['tags'].select{|t| t['name'] =~/@jira_/}.map{|t| /jira_(\w+-\d+)/.match(t['name'])[1]}.join(' ')
       end
     end
 
-    def send_result(scenario,id,testrun)
+    def send_result(scenario,id,testrun_id)
       error_line = scenario['steps'].select{|s| s['result']['status'] != 'passed'}.first 
       if error_line
-        puts error_line['result']
+        #puts error_line['result']
         testrail_status = case error_line['result']['status']
                           when 'failed'
                             {id:5,comment: 'failed'}
@@ -106,35 +106,42 @@ module Cukerail
       end
       report_on_result =  {status_id:testrail_status[:id],comment:failure_message,defects:defects(scenario)}
       begin
-        testrail_api_client.send_post("add_result_for_case/#{testrun}/#{id}",report_on_result)
+        testrail_api_client.send_post("add_result_for_case/#{testrun_id}/#{id}",report_on_result)
       rescue => e
         if e.message =~ /No \(active\) test found for the run\/case combination/
-          add_case_to_test_run(id,testrun)
+          add_case_to_test_run(id,testrun_id)
           retry
         else
-          puts "#{e.message} testrun=#{testrun} test case id=#{id}"
+          puts "#{e.message} testrun=#{testrun_id} test case id=#{id}"
         end
       end
     end
 
     def get_run(run_id)
-      @test_run ||= testrail_api_client.send_get("get_run/#{run_id}")
-      ap @test_run
-      puts "test plan = #{@test_run['plan_id']}"
-      @test_run
+      testrail_api_client.send_get("get_run/#{run_id}")
     end
 
     def get_tests_in_a_run(run_id)
-      @all_tests ||= testrail_api_client.send_get("get_tests/#{run_id}")
+      testrail_api_client.send_get("get_tests/#{run_id}")
     end
 
     def update_run(testrun_id,case_ids)
       run = get_run(testrun_id)
       begin
-        testrail_api_client.send_post("update_run/#{testrun_id}",case_ids)
+        if run['plan_id']
+          update_plan(run['plan_id'],testrun_id,case_ids)
+        else
+          testrail_api_client.send_post("update_run/#{testrun_id}",case_ids)
+        end
       rescue => e
         puts "#{e.message} testrun=#{testrun_id} test case ids=#{case_ids}"
       end
+    end
+
+    def update_plan(plan_id,testrun_id,case_ids)
+      test_plan = testrail_api_client.send_get("get_plan/#{plan_id}")
+      entry_id = test_plan['entries'].select{|e| e['runs'].any?{|r| r['id']==testrun_id}}.first['id']
+      testrail_api_client.send_post("update_plan_entry/#{plan_id}/#{entry_id}",case_ids)
     end
 
     def remove_case_from_test_run(testcase,testrun_id)
@@ -146,7 +153,7 @@ module Cukerail
       end
     end
 
-    def add_case_to_test_run(testcase_id,testrun)
+    def add_case_to_test_run(testcase_id,testrun_id)
       run = get_run(testrun_id)
       unless run['include_all']
         case_ids = get_tests_in_a_run(testrun_id).map{|h| h['case_id']} + [testcase_id]
