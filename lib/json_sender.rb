@@ -3,6 +3,7 @@ require_relative "cukerail/testrail"
 require 'json' unless JSON 
 require 'awesome_print'
 module Cukerail
+
   class JsonSender
     attr_reader :testrail_api_client,:results
     def initialize(json_file)
@@ -80,7 +81,7 @@ module Cukerail
       end
     end
 
-    def send_result(scenario,id,testrun_id)
+    def send_result(scenario,id,run_id)
       error_line = scenario['steps'].select{|s| s['result']['status'] != 'passed'}.first 
       if error_line
         #puts error_line['result']
@@ -106,13 +107,13 @@ module Cukerail
       end
       report_on_result =  {status_id:testrail_status[:id],comment:failure_message,defects:defects(scenario)}
       begin
-        testrail_api_client.send_post("add_result_for_case/#{testrun_id}/#{id}",report_on_result)
+        testrail_api_client.send_post("add_result_for_case/#{run_id}/#{id}",report_on_result)
       rescue => e
         if e.message =~ /No \(active\) test found for the run\/case combination/
-          add_case_to_test_run(id,testrun_id)
+          add_case_to_test_run(id,run_id)
           retry
         else
-          puts "#{e.message} testrun=#{testrun_id} test case id=#{id}"
+          puts "#{e.message} testrun=#{run_id} test case id=#{id}"
         end
       end
     end
@@ -125,47 +126,47 @@ module Cukerail
       testrail_api_client.send_get("get_tests/#{run_id}")
     end
 
-    def update_run(testrun_id,case_ids)
-      run = get_run(testrun_id)
+    def update_run(run_id,case_ids)
+      run = get_run(run_id)
       begin
         if run['plan_id']
-          update_plan(run['plan_id'],testrun_id,case_ids)
+          update_plan(run['plan_id'],run_id,case_ids)
         else
-          testrail_api_client.send_post("update_run/#{testrun_id}",case_ids)
+          testrail_api_client.send_post("update_run/#{run_id}",case_ids)
         end
       rescue => e
-        puts "#{e.message} testrun=#{testrun_id} test case ids=#{case_ids}"
+        puts "#{e.message} testrun=#{run_id} test case ids=#{case_ids}"
       end
     end
 
-    def update_plan(plan_id,testrun_id,case_ids)
+    def update_plan(plan_id,run_id,case_ids)
       test_plan = testrail_api_client.send_get("get_plan/#{plan_id}")
-      entry_id = test_plan['entries'].select{|e| e['runs'].any?{|r| r['id']==testrun_id}}.first['id']
+      entry_id = test_plan['entries'].select{|e| e['runs'].any?{|r| r['id']==run_id}}.first['id']
       testrail_api_client.send_post("update_plan_entry/#{plan_id}/#{entry_id}",case_ids)
     end
 
-    def remove_case_from_test_run(testcase,testrun_id)
+    def remove_case_from_test_run(testcase,run_id)
       testcase_id = get_id(testcase)
-      run = get_run(testrun_id)
+      run = get_run(run_id)
       unless run['include_all']
-        case_ids = get_tests_in_a_run(testrun_id).map{|h| h['case_id']} - [testcase_id]
-        update_run(testrun_id,{'case_ids'=>case_ids})
+        case_ids = get_tests_in_a_run(run_id).map{|h| h['case_id']} - [testcase_id]
+        update_run(run_id,{'case_ids'=>case_ids})
       end
     end
 
-    def add_case_to_test_run(testcase_id,testrun_id)
-      run = get_run(testrun_id)
+    def add_case_to_test_run(testcase_id,run_id)
+      run = get_run(run_id)
       unless run['include_all']
-        case_ids = get_tests_in_a_run(testrun_id).map{|h| h['case_id']} + [testcase_id]
-        update_run(testrun_id,{'case_ids'=>case_ids})
+        case_ids = get_tests_in_a_run(run_id).map{|h| h['case_id']} + [testcase_id]
+        update_run(run_id,{'case_ids'=>case_ids})
       end
     end
 
-    def remove_all_except_these_cases_from_testrun(testcases,testrun_id)
-      run = get_run(testrun_id)
+    def remove_all_except_these_cases_from_testrun(testcases,run_id)
+      run = get_run(run_id)
       unless run['include_all']
-        case_ids = get_tests_in_a_run(testrun_id).map{|h| h['case_id']} & testcases
-        update_run(testrun,{'case_ids'=>case_ids})
+        case_ids = get_tests_in_a_run(run_id).map{|h| h['case_id']} & testcases
+        update_run(run_id,{'case_ids'=>case_ids})
       end
     end
 

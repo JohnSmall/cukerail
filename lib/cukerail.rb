@@ -20,7 +20,7 @@ module Cukerail
       raise 'No id found' unless @id
       send_steps(test_case,@id)
       if ENV['TESTRUN']
-        send_result(test_case,result,@id,ENV['TESTRUN']) 
+        send_result(test_case,result,@id,ENV['TESTRUN'].to_i) 
       end
     rescue StandardError => e
       puts "#{e.message} in #{extract_title(test_case)}"
@@ -189,28 +189,39 @@ module Cukerail
       all_tags(test_case).select{|tag| tag.name =~/jira_/}.map{|ticket| /jira_(\w+-\d+)$/.match(ticket.name)[1]}.join(" ")
     end
 
-    def update_run(testrun,case_ids)
+    def update_run(run_id,case_ids)
+      run = get_run(run_id)
       begin
-        testrail_api_client.send_post("update_run/#{testrun}",case_ids)
+        if run['plan_id']
+          update_plan(run['plan_id'],run_id,case_ids)
+        else
+          testrail_api_client.send_post("update_run/#{run_id}",case_ids)
+        end
       rescue => e
-        puts "#{e.message} testrun=#{testrun} test case ids=#{case_ids}"
+        puts "#{e.message} testrun=#{run_id} test case ids=#{case_ids}"
       end
     end
 
-    def remove_case_from_test_run(testcase,testrun)
+    def update_plan(plan_id,run_id,case_ids)
+      test_plan = testrail_api_client.send_get("get_plan/#{plan_id}")
+      entry_id = test_plan['entries'].detect{|e| e['runs'].any?{|r| r['id']==run_id}}['id']
+      testrail_api_client.send_post("update_plan_entry/#{plan_id}/#{entry_id}",case_ids)
+    end
+
+    def remove_case_from_test_run(testcase,run_id)
       testcase_id = get_id(testcase)
-      run = get_run(testrun)
+      run = get_run(run_id)
       unless run['include_all']
-        case_ids = get_tests_in_a_run(testrun).map{|h| h['case_id']} - [testcase_id]
-        update_run(testrun,{'case_ids'=>case_ids})
+        case_ids = get_tests_in_a_run(run_id).map{|h| h['case_id']} - [testcase_id]
+        update_run(run_id,{'case_ids'=>case_ids})
       end
     end
 
-    def add_case_to_test_run(testcase_id,testrun)
-      run = get_run(testrun)
+    def add_case_to_test_run(testcase_id,run_id)
+      run = get_run(run_id)
       unless run['include_all']
-        case_ids = get_tests_in_a_run(testrun).map{|h| h['case_id']} + [testcase_id]
-        update_run(testrun,{'case_ids'=>case_ids})
+        case_ids = get_tests_in_a_run(run_id).map{|h| h['case_id']} + [testcase_id]
+        update_run(run_id,{'case_ids'=>case_ids})
       end
     end
 
