@@ -106,12 +106,18 @@ module Cukerail
         failure_message = nil
       end
       report_on_result =  {status_id:testrail_status[:id],comment:failure_message,defects:defects(scenario)}
+      tries = 3
       begin
         testrail_api_client.send_post("add_result_for_case/#{run_id}/#{id}",report_on_result)
       rescue => e
         if e.message =~ /No \(active\) test found for the run\/case combination/
+          tries -= 1
           add_case_to_test_run(id,run_id)
-          retry
+          if tries > 0
+             retry
+          else
+            puts "#{e.message} testrun=#{run_id} test case id=#{id}"
+          end
         else
           puts "#{e.message} testrun=#{run_id} test case id=#{id}"
         end
@@ -157,6 +163,7 @@ module Cukerail
     def add_case_to_test_run(testcase_id,run_id)
       run = get_run(run_id)
       unless run['include_all']
+        puts "add testcase #{testcase_id} to run #{run_id}"
         case_ids = get_tests_in_a_run(run_id).map{|h| h['case_id']} + [testcase_id]
         update_run(run_id,{'case_ids'=>case_ids})
       end
