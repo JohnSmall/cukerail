@@ -23,13 +23,15 @@ module TestRail
 		attr_accessor :user
 		attr_accessor :password
 
-		def initialize(base_url,user,password)
+		def initialize(base_url,user,password,proxy_url=nil,proxy_port=nil)
 			if !base_url.match(/\/$/)
 				base_url += '/'
 			end
 			@url = base_url + 'index.php?/api/v2/'
       @user ||=user
       @password ||=password
+			@proxy_url ||= proxy_url
+			@proxy_port ||= proxy_port
 		end
 
 		#
@@ -76,7 +78,8 @@ module TestRail
 			request.basic_auth(@user, @password)
 			request.add_field('Content-Type', 'application/json')
 
-			conn = Net::HTTP.new(url.host, url.port)
+			conn = Net::HTTP.new(url.host, url.port,@proxy_url,@proxy_port)
+
 			if url.scheme == 'https'
 				conn.use_ssl = true
 				conn.verify_mode = OpenSSL::SSL::VERIFY_NONE
