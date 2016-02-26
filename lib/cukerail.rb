@@ -1,5 +1,9 @@
 require "cukerail/version"
 require "cukerail/testrail"
+# require_relative "cucumber_extensions/formatters/json/builder"
+# puts 'load extensions'
+# puts (Cucumber::Formatter.name)
+# Cucumber::Formatter::Json::Builder.include CucumberExtensions::Formatter::Json::Builder
 module Cukerail
   class Sender
     attr_reader :testrail_api_client,:failed_step
