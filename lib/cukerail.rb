@@ -106,7 +106,7 @@ module Cukerail
       data = {'title'=>extract_title(test_case),
               'type_id'=>(is_manual ? 7 : 1 ),
               'custom_steps'=>steps_as_string,
-              'refs'=>defects(test_case)
+              'refs'=>refs(test_case)
       }
       testrail_api_client.send_post("update_case/#{id}",data)
     end
@@ -117,7 +117,7 @@ module Cukerail
       data = {'title'=>extract_title(test_case),
               'type_id'=>(is_manual ? 7 : 1 ),
               'custom_steps'=>steps_as_string,
-              'refs'=>defects(test_case)
+              'refs'=>refs(test_case)
       }
       testrail_api_client.send_post("add_case/#{sub_section_id || suite_id}", data)
     end
@@ -190,7 +190,11 @@ module Cukerail
     end
 
     def defects(test_case)
-      all_tags(test_case).select{|tag| tag.name =~/jira_/}.map{|ticket| /jira_(\w+-\d+)$/.match(ticket.name)[1]}.uniq.join(",")
+      all_tags(test_case).select{|tag| tag.name =~/(?:jira|defect)_/}.map{|ticket| /(?:jira|defect)_(\w+-\d+)$/.match(ticket.name)[1]}.uniq.join(",")
+    end
+
+    def refs(test_case)
+      all_tags(test_case).select{|tag| tag.name =~/(?:jira|ref)_/}.map{|ticket| /(?:jira|ref)_(\w+-\d+)$/.match(ticket.name)[1]}.uniq.join(",")
     end
 
     def update_run(run_id,case_ids)

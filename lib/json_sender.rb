@@ -71,13 +71,19 @@ module Cukerail
       data = {'title'=>get_name(scenario),
               'type_id'=>(is_manual ? 7 : 1 ),
               'custom_steps'=>steps,
-              'refs'=>defects(scenario)
+              'refs'=>refs(scenario)
       }
     end
 
-    def defects(scenario)
+    def defects(test_case)
       if scenario['tags']
-        scenario['tags'].select{|t| t['name'] =~/@jira_/}.map{|t| /jira_(\w+-\d+)/.match(t['name'])[1]}.join(' ')
+        all_tags(test_case).select{|tag| tag['name'] =~/(?:jira|defect)_/}.map{|ticket| /(?:jira|defect)_(\w+-\d+)$/.match(ticket['name'])[1]}.uniq.join(",")
+      end
+    end
+
+    def refs(test_case)
+      if scenario['tags']
+        all_tags(test_case).select{|tag| tag['name'] =~/(?:jira|ref)_/}.map{|ticket| /(?:jira|ref)_(\w+-\d+)$/.match(ticket['name'])[1]}.uniq.join(",")
       end
     end
 
@@ -114,7 +120,7 @@ module Cukerail
           tries -= 1
           add_case_to_test_run(id,run_id)
           if tries > 0
-             retry
+            retry
           else
             puts "#{e.message} testrun=#{run_id} test case id=#{id}"
           end

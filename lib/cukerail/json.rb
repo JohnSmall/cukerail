@@ -3,7 +3,7 @@ module Cukerail
     class Json < Cucumber::Formatter::Json
       class Cucumber::Formatter::Json::Builder
         def scenario_outline(scenario)
-          puts 'in scenario outline'
+          # puts 'in scenario outline'
           @test_case_hash = {
             id: create_id(scenario) + ';' + (@example_id.gsub(' ','').gsub(',',';')),
             keyword: scenario.keyword,
@@ -24,7 +24,7 @@ module Cukerail
         end
 
         def examples_table(examples_table)
-          puts 'in examples table'
+          # puts 'in examples table'
           # We want the row data to be used in making the full scenario name
           @example_id = @row.send(:data).map{|k,v| "#{k}=#{v}"}.join(", ")
           @examples_table_tags = create_tags_array(examples_table.tags) unless examples_table.tags.empty?
