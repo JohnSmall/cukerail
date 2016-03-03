@@ -153,7 +153,8 @@ module Cukerail
       else
         failure_message = nil
       end
-      report_on_result =  {status_id:testrail_status[:id],comment:failure_message,defects:defects(test_case)}
+      #only send defects if the test is not passed
+      report_on_result =  {status_id:testrail_status[:id],comment:failure_message,defects:testrail_status[:id]==1 ? '' : defects(test_case)}
       begin
         testrail_api_client.send_post("add_result_for_case/#{testrun}/#{id}",report_on_result)
       rescue => e
