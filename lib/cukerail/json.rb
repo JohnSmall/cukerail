@@ -17,7 +17,7 @@ module Cukerail
           tags += @examples_table_tags if @examples_table_tags
           @test_case_hash[:tags] = tags unless tags.empty?
           comments = []
-          comments += Formatter.create_comments_array(scenario.comments) unless scenario.comments.empty?
+          comments += ::Cucumber::Formatter.create_comments_array(scenario.comments) unless scenario.comments.empty?
           comments += @examples_table_comments if @examples_table_comments
           comments += @row_comments if @row_comments
           @test_case_hash[:comments] =  comments unless comments.empty?
@@ -28,7 +28,7 @@ module Cukerail
           # We want the row data to be used in making the full scenario name
           @example_id = @row.send(:data).map{|k,v| "#{k}=#{v}"}.join(", ")
           @examples_table_tags = create_tags_array(examples_table.tags) unless examples_table.tags.empty?
-          @examples_table_comments = Formatter.create_comments_array(examples_table.comments) unless examples_table.comments.empty?
+          @examples_table_comments = ::Cucumber::Formatter.create_comments_array(examples_table.comments) unless examples_table.comments.empty?
         end
        end
     end
