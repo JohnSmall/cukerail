@@ -93,15 +93,12 @@ module Cukerail
 
     def send_steps(test_case,id)
       steps_as_string = test_case.test_steps.map{|step| step.source.last}
-      .select{|step| step.is_a?(Cucumber::Core::Ast::Step) && step.respond_to?(:gherkin_statement)}
-      .reject{|step| step.is_a?(Cucumber::Hooks::BeforeHook)}.map do | step |
-        g = step.gherkin_statement
-        str = g.keyword+g.name
-        g.rows.each do | row |
-          str += "\n| #{row.cells.join(' | ')} |"
-        end if g.rows
+      .select{|step| step.is_a?(Cucumber::Core::Ast::Step)}
+      .reject{|step| step.is_a?(Cucumber::Hooks::BeforeHook)}.map do | g_step |
+        str = g_step.send(:keyword)+g_step.send(:name)
+        str += g_step.multiline_arg.raw.map{|l|"\n| #{l.join(' | ')} |"}.join if g_step.multiline_arg.data_table?
         str
-      end.join("\n")
+       end.join("\n")
       is_manual = test_case.tags.any?{|tag| tag.name =~/manual/}
       data = {'title'=>extract_title(test_case),
               'type_id'=>(is_manual ? 7 : 1 ),
