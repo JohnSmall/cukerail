@@ -23,6 +23,9 @@ module Cukerail
       @id = get_id(test_case)
       raise 'No id found' unless @id
       send_steps(test_case,@id)
+      if ENV['UPDATE_SOURCE']
+        update_source_file(test_case,@id)
+      end
       if ENV['TESTRUN']
         send_result(test_case,result,@id,ENV['TESTRUN'].to_i) 
       end
