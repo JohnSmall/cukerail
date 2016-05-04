@@ -24,7 +24,7 @@ module Cukerail
       raise 'No id found' unless @id
       send_steps(test_case,@id)
       if ENV['UPDATE_SOURCE']
-        update_source_file(test_case,@id)
+        update_source_file(test_case,@id) unless test_case.source.any?{|h| h.is_a?(Cucumber::Core::Ast::ScenarioOutline)}
       end
       if ENV['TESTRUN']
         send_result(test_case,result,@id,ENV['TESTRUN'].to_i) 
@@ -58,31 +58,38 @@ module Cukerail
 
     def get_id(test_case)
       #      ap test_case.methods - Object.methods
-      tagged_id = test_case.tags.select{|tag| tag.name =~/testcase/}.first
-      tags = all_tags(test_case) 
-      project_id = /\d+/.match(tags.select{|tag| tag.name =~/project/}.first.name)[0] 
-      suite_id = /\d+/.match(tags.select{|tag| tag.name =~/suite/}.first.name)[0] 
-      title = extract_title(test_case)
-      found_case = testrail_api_client.send_get("get_cases/#{project_id}&suite_id=#{suite_id}").select{|c| c['title'] == title}.first
-      if found_case
-        result= found_case['id']
+      tagged_id = test_case.tags.detect{|tag| tag.name =~/testcase/}
+      if tagged_id
+        result = /testcase_(\d+)/.match(tagged_id.name)[1]
       else
-        sub_section_id = /\d+/.match(tags.select{|tag| tag.name =~/sub_section/}.first.name)[0] 
-        result = create_new_case(project_id,suite_id,sub_section_id,test_case)['id']
+        tags = all_tags(test_case) 
+        project_id = /\d+/.match(tags.select{|tag| tag.name =~/project/}.first.name)[0] 
+        suite_id = /\d+/.match(tags.select{|tag| tag.name =~/suite/}.first.name)[0] 
+        title = extract_title(test_case)
+        found_case = testrail_api_client.send_get("get_cases/#{project_id}&suite_id=#{suite_id}").select{|c| c['title'] == title}.first
+        if found_case
+          result= found_case['id']
+        else
+          sub_section_id = /\d+/.match(tags.select{|tag| tag.name =~/sub_section/}.first.name)[0] 
+          result = create_new_case(project_id,suite_id,sub_section_id,test_case)['id']
+        end
       end
       return result
     end
 
     def update_source_file(scenario, external_reference)
       #this could be done on one line with sed. But the format is different on Mac OS and GNU Linux version and it definitely won't work on a Windows machine
-      path = scenario.file
-      lines = IO.readlines(scenario.file)
-      lines[scenario.line-2].gsub!(/ @testcase_\d*/," @testcase_#{external_reference}") 
-      lines[scenario.line-2].gsub!(/\n/," @testcase_#{external_reference}") unless lines[scenario.line-2] =~ /testcase/ 
+      # byebug
+      path = scenario.location.file
+      # ap path
+      lines = IO.readlines(path)
+      lines[scenario.location.line-2].gsub!(/ @testcase_\d*/," @testcase_#{external_reference}") 
+      lines[scenario.location.line-2].gsub!(/\n/," @testcase_#{external_reference}") unless lines[scenario.location.line-2] =~ /testcase/ 
       temp_file = Tempfile.new('foo')
       begin
         File.open(path, 'r') do |file|
           lines.each do |line|
+            # puts line
             temp_file.puts line
           end
         end
@@ -101,7 +108,7 @@ module Cukerail
         str = g_step.send(:keyword)+g_step.send(:name)
         str += g_step.multiline_arg.raw.map{|l|"\n| #{l.join(' | ')} |"}.join if g_step.multiline_arg.data_table?
         str
-       end.join("\n")
+      end.join("\n")
       is_manual = test_case.tags.any?{|tag| tag.name =~/manual/}
       data = {'title'=>extract_title(test_case),
               'type_id'=>(is_manual ? 7 : 1 ),

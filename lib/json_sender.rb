@@ -75,16 +75,18 @@ module Cukerail
       }
     end
 
-    def defects(test_case)
-      if scenario['tags']
-        all_tags(test_case).select{|tag| tag['name'] =~/(?:jira|defect)_/}.map{|ticket| /(?:jira|defect)_(\w+-\d+)$/.match(ticket['name'])[1]}.uniq.join(",")
-      end
+    def defects(scenario)
+       if scenario['tags']
+         tags= [scenario['tags']].flatten.compact
+         tags.select{|tag| tag['name'] =~/(?:jira|defect)_/}.map{|ticket| /(?:jira|defect)_(\w+-\d+)$/.match(ticket['name'])[1]}.uniq.join(",")
+       end
     end
 
-    def refs(test_case)
-      if scenario['tags']
-        all_tags(test_case).select{|tag| tag['name'] =~/(?:jira|ref)_/}.map{|ticket| /(?:jira|ref)_(\w+-\d+)$/.match(ticket['name'])[1]}.uniq.join(",")
-      end
+    def refs(scenario)
+       if scenario['tags']
+         tags= [scenario['tags']].flatten.compact
+         tags.select{|tag| tag['name'] =~/(?:jira|ref)_/}.map{|ticket| /(?:jira|ref)_(\w+-\d+)$/.match(ticket['name'])[1]}.uniq.join(",")
+       end
     end
 
     def send_result(scenario,id,run_id)
