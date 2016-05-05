@@ -1,5 +1,5 @@
 require_relative '../json_sender'
-desc 'load a json results file into a test suite'
+desc 'load a json results file into a test suite, JSON=filename'
 task :load_to_suite do
   raise 'You must have JSON=filename on the command line' unless ENV['JSON']
   json_sender =Cukerail::JsonSender.new(ENV['JSON'])
@@ -20,7 +20,7 @@ task :load_to_suite do
   end
 end
 
-desc 'load a json results file into a test run'
+desc 'load a json results file into a test run TESTRUN=run_number JSON=filename'
 task :load_to_test_run do
   raise 'You must have TESTRUN=testrun_number on the command line' unless ENV['TESTRUN']
   json_sender =Cukerail::JsonSender.new(ENV['JSON'])
@@ -35,7 +35,7 @@ task :load_to_test_run do
   end
 end
 
-desc "remove cases from a test run that are aren't in the json results"
+desc "remove cases from a test run that are aren't in the json results, TESTRUN=run_number JSON=filename"
 task :remove_from_test_run do
   raise 'You must have TESTRUN=testrun_number on the command line' unless ENV['TESTRUN']
   raise 'You must have JSON=filename on the command line' unless ENV['JSON']
@@ -49,11 +49,11 @@ task :remove_from_test_run do
   json_sender.remove_all_except_these_cases_from_testrun(testcase_ids,ENV['TESTRUN'].to_i)
 end
 
-desc "match test run cases to json results file"
+desc "match test run cases to json results file,"
 task match_to_test_run: [:remove_from_test_run,:load_to_test_run] do 
 end
 
-desc "remove cases from a test suite that aren't in the json results"
+desc "remove cases from a test suite that aren't in the json results, TESTRUN=run_number JSON=filename"
 task :remove_from_test_suite do
   raise 'You must have JSON=filename on the command line' unless ENV['JSON']
   json_sender =Cukerail::JsonSender.new(ENV['JSON'])
