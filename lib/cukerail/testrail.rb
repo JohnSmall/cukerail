@@ -13,99 +13,101 @@ require 'net/http'
 require 'net/https'
 require 'uri'
 require 'json'
-
+require 'retriable'
 module TestRail
-	class APIClient
-		@url = ''
-		@user = ''
-		@password = ''
+  class APIClient
+    @url = ''
+    @user = ''
+    @password = ''
 
-		attr_accessor :user
-		attr_accessor :password
+    attr_accessor :user
+    attr_accessor :password
 
-		def initialize(base_url,user,password,proxy_url=nil,proxy_port=nil)
-			if !base_url.match(/\/$/)
-				base_url += '/'
-			end
-			@url = base_url + 'index.php?/api/v2/'
+    def initialize(base_url,user,password,proxy_url=nil,proxy_port=nil)
+      if !base_url.match(/\/$/)
+        base_url += '/'
+      end
+      @url = base_url + 'index.php?/api/v2/'
       @user ||=user
       @password ||=password
-			@proxy_url ||= proxy_url
-			@proxy_port ||= proxy_port
-		end
+      @proxy_url ||= proxy_url
+      @proxy_port ||= proxy_port
+    end
 
-		#
-		# Send Get
-		#
-		# Issues a GET request (read) against the API and returns the result
-		# (as Ruby hash).
-		#
-		# Arguments:
-		#
-		# uri                 The API method to call including parameters
-		#                     (e.g. get_case/1)
-		#
-		def send_get(uri) 
-			_send_request('GET', uri, nil)
-		end
+    #
+    # Send Get
+    #
+    # Issues a GET request (read) against the API and returns the result
+    # (as Ruby hash).
+    #
+    # Arguments:
+    #
+    # uri                 The API method to call including parameters
+    #                     (e.g. get_case/1)
+    #
+    def send_get(uri) 
+      _send_request('GET', uri, nil)
+    end
 
-		#
-		# Send POST
-		#
-		# Issues a POST request (write) against the API and returns the result
-		# (as Ruby hash).
-		#
-		# Arguments:
-		#
-		# uri                 The API method to call including parameters
-		#                     (e.g. add_case/1)
-		# data                The data to submit as part of the request (as
-		#                     Ruby hash, strings must be UTF-8 encoded)
-		#
-		def send_post(uri, data)
-			_send_request('POST', uri, data)
-		end
+    #
+    # Send POST
+    #
+    # Issues a POST request (write) against the API and returns the result
+    # (as Ruby hash).
+    #
+    # Arguments:
+    #
+    # uri                 The API method to call including parameters
+    #                     (e.g. add_case/1)
+    # data                The data to submit as part of the request (as
+    #                     Ruby hash, strings must be UTF-8 encoded)
+    #
+    def send_post(uri, data)
+      _send_request('POST', uri, data)
+    end
 
-		private
-		def _send_request(method, uri, data)
-			url = URI.parse(@url + uri)
-			if method == 'POST'
-				request = Net::HTTP::Post.new(url.path + '?' + url.query)
-				request.body = JSON.dump(data)
-			else
-				request = Net::HTTP::Get.new(url.path + '?' + url.query)
-			end
-			request.basic_auth(@user, @password)
-			request.add_field('Content-Type', 'application/json')
+    private
+    def _send_request(method, uri, data)
+      Retriable.retriable multiplier: 3 do
+        url = URI.parse(@url + uri)
+        if method == 'POST'
+          request = Net::HTTP::Post.new(url.path + '?' + url.query)
+          request.body = JSON.dump(data)
+        else
+          request = Net::HTTP::Get.new(url.path + '?' + url.query)
+        end
+        request.basic_auth(@user, @password)
+        request.add_field('Content-Type', 'application/json')
 
-			conn = Net::HTTP.new(url.host, url.port,@proxy_url,@proxy_port)
+        conn = Net::HTTP.new(url.host, url.port,@proxy_url,@proxy_port)
 
-			if url.scheme == 'https'
-				conn.use_ssl = true
-				conn.verify_mode = OpenSSL::SSL::VERIFY_NONE
-			end
-			response = conn.request(request)
+        if url.scheme == 'https'
+          conn.use_ssl = true
+          conn.verify_mode = OpenSSL::SSL::VERIFY_NONE
+        end
+        response = conn.request(request)
 
-			if response.body && !response.body.empty?
-				result = JSON.parse(response.body)
-			else
-				result = {}
-			end
+        if response.body && !response.body.empty?
+          result = JSON.parse(response.body)
+        else
+          result = {}
+        end
 
-			if response.code != '200'
-				if result && result.key?('error')
-					error = '"' + result['error'] + '"'
-				else
-					error = 'No additional error message received'
-				end
-				raise APIError.new('TestRail API returned HTTP %s (%s)' %
-					[response.code, error])
-			end
-			
-			result
-		end
-	end
+        if response.code != '200'
+          if result && result.key?('error')
+            error = '"' + result['error'] + '"'
+          else
+            error = 'No additional error message received'
+          end
+          raise APIError.new('TestRail API returned HTTP %s (%s)' %
+                             [response.code, error])
+        end
 
-	class APIError < StandardError
-	end
+        result
+      end
+    end
+  end
+
+  class APIError < StandardError
+  end
 end
