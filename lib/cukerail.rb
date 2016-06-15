@@ -23,8 +23,8 @@ module Cukerail
       @id = get_id(test_case)
       raise 'No id found' unless @id
       send_steps(test_case,@id)
-      if ENV['UPDATE_SOURCE']
-        update_source_file(test_case,@id) unless test_case.source.any?{|h| h.is_a?(Cucumber::Core::Ast::ScenarioOutline)}
+      if ENV['UPDATE_SOURCE'] && !test_case.source.any?{|h| h.is_a?(Cucumber::Core::Ast::ScenarioOutline)}
+        update_source_file(test_case,@id)
       end
       if ENV['TESTRUN']
         send_result(test_case,result,@id,ENV['TESTRUN'].to_i) 
@@ -178,7 +178,7 @@ module Cukerail
       requirements_tags = all_tags(test_case).select{|tag| tag.name =~ /req_\w+/}.map{|tag| /req_(\w+)/.match(tag.name)[1]}.join(', ')
       if test_case.source.last.is_a?(Cucumber::Core::Ast::ExamplesTable::Row)
         title  = test_case.source.select{|s| s.is_a?(Cucumber::Core::Ast::ScenarioOutline)}.first.name
-        title += " "+test_case.source.last.send(:data).map{|key,value| "#{key}=#{value}"}.join(', ')
+        title += (ENV['OLD_STYLE_OUTLINE_NAMES'] ? ' :: ' : " ")+test_case.source.last.send(:data).map{|key,value| "#{key}=#{value}"}.join(', ')
       else
         title = test_case.source.last.name
       end

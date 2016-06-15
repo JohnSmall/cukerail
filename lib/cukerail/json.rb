@@ -7,7 +7,7 @@ module Cukerail
           @test_case_hash = {
             id: create_id(scenario) + ';' + (@example_id.gsub(' ','').gsub(',',';')),
             keyword: scenario.keyword,
-            name: scenario.name + ' ' + @example_id,
+            name: scenario.name + (ENV['OLD_STYLE_OUTLINE_NAMES'] ? ' :: ' : " ") + @example_id,
             description: scenario.description,
             line: @row.location.line,
             type: 'scenario'
