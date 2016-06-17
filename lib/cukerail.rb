@@ -178,7 +178,11 @@ module Cukerail
       requirements_tags = all_tags(test_case).select{|tag| tag.name =~ /req_\w+/}.map{|tag| /req_(\w+)/.match(tag.name)[1]}.join(', ')
       if test_case.source.last.is_a?(Cucumber::Core::Ast::ExamplesTable::Row)
         title  = test_case.source.select{|s| s.is_a?(Cucumber::Core::Ast::ScenarioOutline)}.first.name
-        title += (ENV['OLD_STYLE_OUTLINE_NAMES'] ? ' :: ' : " ")+test_case.source.last.send(:data).map{|key,value| "#{key}=#{value}"}.join(', ')
+        if ENV['OLD_STYLE_OUTLINE_NAMES'] 
+          title += ' :: ' + test_case.source.last.send(:data).map{|key,value| "#{key}='#{value}'"}.join(', ')
+        else
+          title += " " + test_case.source.last.send(:data).map{|key,value| "#{key}=#{value}"}.join(', ')
+        end
       else
         title = test_case.source.last.name
       end
