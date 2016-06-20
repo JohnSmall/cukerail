@@ -109,9 +109,14 @@ module Cukerail
         str += g_step.multiline_arg.raw.map{|l|"\n| #{l.join(' | ')} |"}.join if g_step.multiline_arg.data_table?
         str
       end.join("\n")
-      is_manual = test_case.tags.any?{|tag| tag.name =~/manual/}
+      type_ids = [1]
+      type_ids << 7  if test_case.tags.any?{|tag| tag.name =~/manual/}
+      type_ids << 13 if test_case.tags.any?{|tag| tag.name =~/on_hold/}
+      #get the highest precedence type found in the tags. E.g. if it's @on_hold and @manual it selects 13 for on hold
+      type_id = ([13,7,1] & type_ids).first
+
       data = {'title'=>extract_title(test_case),
-              'type_id'=>(is_manual ? 7 : 1 ),
+              'type_id'=>type_id,
               'custom_steps'=>steps_as_string,
               'refs'=>refs(test_case)
       }

@@ -67,9 +67,14 @@ module Cukerail
 
     def prepare_data(scenario,background_steps)
       steps = background_steps + "\n" + scenario['steps'].map{|s| s['keyword']+s['name']}.join("\n")
-      is_manual = scenario['tags'].any?{|tag| tag['name'] =~/manual/} if scenario['tags']
+      type_ids = [1]
+      type_ids << 7  if test_case.tags.any?{|tag| tag.name =~/manual/}
+      type_ids << 13 if test_case.tags.any?{|tag| tag.name =~/on_hold/}
+      #get the highest precedence type found in the tags. E.g. if it's @on_hold and @manual it selects 13 for on hold
+      type_id = ([13,7,1] & type_ids).first
+
       data = {'title'=>get_name(scenario),
-              'type_id'=>(is_manual ? 7 : 1 ),
+              'type_id'=>type_id,
               'custom_steps'=>steps,
               'refs'=>refs(scenario)
       }
