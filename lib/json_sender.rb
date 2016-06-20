@@ -29,7 +29,8 @@ module Cukerail
       if found_case
         result= found_case['id']
       else
-        result = create_new_case(scenario,background_steps,project_id,suite_id,sub_section_id)['id']
+        test_case = create_new_case(scenario,background_steps,project_id,suite_id,sub_section_id)
+        result = test_case ? test_case['id'] : nil
       end
       return result
     end
@@ -58,11 +59,17 @@ module Cukerail
     def create_new_case(scenario,background_steps,project_id,suite_id,sub_section_id)
       data = prepare_data(scenario,background_steps)
       testrail_api_client.send_post("add_case/#{sub_section_id || suite_id}", data)
+    rescue StandardError => e
+      puts "#{e.message} in #{get_name(scenario)}"
+      return nil
     end
 
     def send_steps(scenario,background_steps,testcase_id)
       data = prepare_data(scenario,background_steps)
       testrail_api_client.send_post("update_case/#{testcase_id}",data)
+    rescue StandardError => e
+      puts "#{e.message} in #{get_name(scenario)}"
+      return nil
     end
 
     def prepare_data(scenario,background_steps)

@@ -1,5 +1,4 @@
 require_relative '../json_sender'
-require 'byebug'
 desc 'load a json results file into a test suite, JSON=filename'
 task :load_to_suite do
   raise 'You must have JSON=filename on the command line' unless ENV['JSON']
@@ -47,7 +46,8 @@ task :remove_from_test_run do
     testcase_ids << json_sender.get_id(scenario,background_steps,project_id,suite_id,sub_section_id)
   end  
   end  
-  json_sender.remove_all_except_these_cases_from_testrun(testcase_ids,ENV['TESTRUN'].to_i)
+  # if the title is mroe than 255 characters then Testrail can't create the case, so the id will be nil so we should compact the array
+  json_sender.remove_all_except_these_cases_from_testrun(testcase_ids.compact,ENV['TESTRUN'].to_i)
 end
 
 desc "match test run cases to json results file,"
@@ -68,5 +68,6 @@ task :remove_from_test_suite do
       testcase_ids << json_sender.get_id(scenario,background_steps,project_id,suite_id,sub_section_id)
     end  
   end  
-  json_sender.remove_all_except_these_cases_from_suite(testcase_ids,ex_project_id,ex_suite_id)
+  # if the title is mroe than 255 characters then Testrails can't create the case, so the id will be nil so we should compact the array
+  json_sender.remove_all_except_these_cases_from_suite(testcase_ids.compact,ex_project_id,ex_suite_id)
 end

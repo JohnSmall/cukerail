@@ -102,36 +102,11 @@ module Cukerail
     end
 
     def send_steps(test_case,id)
-      steps_as_string = test_case.test_steps.map{|step| step.source.last}
-      .select{|step| step.is_a?(Cucumber::Core::Ast::Step)}
-      .reject{|step| step.is_a?(Cucumber::Hooks::BeforeHook)}.map do | g_step |
-        str = g_step.send(:keyword)+g_step.send(:name)
-        str += g_step.multiline_arg.raw.map{|l|"\n| #{l.join(' | ')} |"}.join if g_step.multiline_arg.data_table?
-        str
-      end.join("\n")
-      type_ids = [1]
-      type_ids << 7  if test_case.tags.any?{|tag| tag.name =~/manual/}
-      type_ids << 13 if test_case.tags.any?{|tag| tag.name =~/on_hold/}
-      #get the highest precedence type found in the tags. E.g. if it's @on_hold and @manual it selects 13 for on hold
-      type_id = ([13,7,1] & type_ids).first
-
-      data = {'title'=>extract_title(test_case),
-              'type_id'=>type_id,
-              'custom_steps'=>steps_as_string,
-              'refs'=>refs(test_case)
-      }
-      testrail_api_client.send_post("update_case/#{id}",data)
+      testrail_api_client.send_post("update_case/#{id}",test_case_data(test_case))
     end
 
     def create_new_case(project_id,suite_id,sub_section_id,test_case)
-      is_manual = test_case.tags.any?{|tag| tag.name =~/manual/}
-      steps_as_string = test_case.test_steps.map{|step| step.source.last}.select{|step| step.is_a?(Cucumber::Core::Ast::Step)}.map{|step| "#{step.keyword}#{step.name}"}.join("\n")
-      data = {'title'=>extract_title(test_case),
-              'type_id'=>(is_manual ? 7 : 1 ),
-              'custom_steps'=>steps_as_string,
-              'refs'=>refs(test_case)
-      }
-      testrail_api_client.send_post("add_case/#{sub_section_id || suite_id}", data)
+      testrail_api_client.send_post("add_case/#{sub_section_id || suite_id}",test_case_data(test_case))
     end
 
     def send_result(test_case,result,id,testrun)
@@ -212,6 +187,30 @@ module Cukerail
 
     def refs(test_case)
       all_tags(test_case).select{|tag| tag.name =~/(?:jira|ref)_/}.map{|ticket| /(?:jira|ref)_(\w+-\d+)$/.match(ticket.name)[1]}.uniq.join(",")
+    end
+
+    def type_id(test_case)
+      type_ids = [1]
+      type_ids << 7  if test_case.tags.any?{|tag| tag.name =~/manual/}
+      type_ids << 13 if test_case.tags.any?{|tag| tag.name =~/on_hold/}
+      #get the highest precedence type found in the tags. E.g. if it's @on_hold and @manual it selects 13 for on hold
+      ([13,7,1] & type_ids).first
+    end
+
+    def test_case_data(test_case)
+      steps_as_string = test_case.test_steps.map{|step| step.source.last}
+      .select{|step| step.is_a?(Cucumber::Core::Ast::Step)}
+      .reject{|step| step.is_a?(Cucumber::Hooks::BeforeHook)}.map do | g_step |
+        str = g_step.send(:keyword)+g_step.send(:name)
+        str += g_step.multiline_arg.raw.map{|l|"\n| #{l.join(' | ')} |"}.join if g_step.multiline_arg.data_table?
+        str
+      end.join("\n")
+
+      {'title'=>extract_title(test_case),
+              'type_id'=>type_id(test_case),
+              'custom_steps'=>steps_as_string,
+              'refs'=>refs(test_case)
+      }
     end
 
     def update_run(run_id,case_ids)
