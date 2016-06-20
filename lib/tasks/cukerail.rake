@@ -1,4 +1,5 @@
 require_relative '../json_sender'
+require 'byebug'
 desc 'load a json results file into a test suite, JSON=filename'
 task :load_to_suite do
   raise 'You must have JSON=filename on the command line' unless ENV['JSON']

@@ -68,8 +68,8 @@ module Cukerail
     def prepare_data(scenario,background_steps)
       steps = background_steps + "\n" + scenario['steps'].map{|s| s['keyword']+s['name']}.join("\n")
       type_ids = [1]
-      type_ids << 7  if test_case.tags.any?{|tag| tag.name =~/manual/}
-      type_ids << 13 if test_case.tags.any?{|tag| tag.name =~/on_hold/}
+      type_ids << 7  if scenario['tags'].any?{|tag| tag['name'] =~/manual/}
+      type_ids << 13 if scenario['tags'].any?{|tag| tag['name'] =~/on_hold/}
       #get the highest precedence type found in the tags. E.g. if it's @on_hold and @manual it selects 13 for on hold
       type_id = ([13,7,1] & type_ids).first
 
@@ -193,7 +193,8 @@ module Cukerail
     def remove_all_except_these_cases_from_suite(testcases,project_id,suite_id)
       puts '=== testcases === '
       puts testcases
-      existing_cases = testrail_api_client.send_get("get_cases/#{project_id}&suite_id=#{suite_id}").map{|m| m['id']}
+      # get a list of automated tests, ignore manual or on hold tests
+      existing_cases = testrail_api_client.send_get("get_cases/#{project_id}&suite_id=#{suite_id}").select{|t| t['type_id']==1}.map{|m| m['id']}
       puts '===== existing_cases === '
       puts existing_cases
       (existing_cases - testcases).each do |case_to_remove|
