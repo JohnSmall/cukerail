@@ -59,7 +59,13 @@ module Cukerail
           # id if there is any and append to the base name. note: _ before variable means it is not going
           # to be used
           _feature, _scenario, example_data = scenario['id'].split(';')
-          base_name = "#{base_name} #{example_data}" unless example_data.nil? && example_data.strip.empty?
+          unless example_data.nil? && example_data.strip.empty?
+            base_name = if ENV['OLD_STYLE_OUTLINE_NAMES']
+                          "#{base_name} :: #{example_data}"
+                        else
+                          "#{base_name} #{example_data}"
+                        end
+          end
         end
       end
       tags = [scenario['tags']].flatten.compact
