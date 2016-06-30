@@ -53,11 +53,28 @@ module Cukerail
 
     def get_name(scenario)
       base_name = scenario['name']
-      outline_number_str = scenario['id'].split(';').select{|e| e =~/^\d+$/}.first
-      if outline_number_str
-        outline_number = (outline_number_str.to_i) -1
+      # We only extrapolate example data for scenario outlines
+      is_scenario_outline = scenario['keyword'].downcase == 'scenario outline' ? true : false
+      if is_scenario_outline
+        # if we have scenario number then we assume this is just a JSON output without our id patch
+        outline_number_str = scenario['id'].split(';').select{|e| e =~/^\d+$/}.first
+        if outline_number_str
+          outline_number = (outline_number_str.to_i) -1
+        else
+          # If we do not find an outline number, then we attempt to extrapolate the example data from the
+          # id if there is any and append to the base name. note: _ before variable means it is not going
+          # to be used
+          _feature, _scenario, example_data = scenario['id'].split(';')
+          unless example_data.nil? && example_data.strip.empty?
+            base_name = if ENV['OLD_STYLE_OUTLINE_NAMES']
+                          "#{base_name} :: #{example_data}"
+                        else
+                          "#{base_name} #{example_data}"
+                        end
+          end
+        end
       end
-      tags= [scenario['tags']].flatten.compact
+      tags = [scenario['tags']].flatten.compact
       requirement = tags.select{|t| t['name'] =~/@req/}.map{|t| /@req_(\w+)/.match(t['name'])[1]}.first unless tags.empty?
       [requirement, base_name, outline_number].join(' ').strip
     end
