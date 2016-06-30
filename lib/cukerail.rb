@@ -62,16 +62,17 @@ module Cukerail
       if tagged_id
         result = /testcase_(\d+)/.match(tagged_id.name)[1]
       else
-        tags = all_tags(test_case) 
-        project_id = /\d+/.match(tags.select{|tag| tag.name =~/project/}.first.name)[0] 
-        suite_id = /\d+/.match(tags.select{|tag| tag.name =~/suite/}.first.name)[0] 
+        tags = test_case.tags
+        project_id = /\d+/.match(tags.select{|tag| tag.name =~/project/}.last.name)[0] 
+        suite_id = /\d+/.match(tags.select{|tag| tag.name =~/suite/}.last.name)[0] 
+        section_id = /\d+/.match(tags.select{|tag| tag.name =~/sub_section/}.last.name)[0] 
+        puts section_id
         title = extract_title(test_case)
-        found_case = testrail_api_client.send_get("get_cases/#{project_id}&suite_id=#{suite_id}").select{|c| c['title'] == title}.first
+        found_case = testrail_api_client.send_get("get_cases/#{project_id}&suite_id=#{suite_id}&section_id=#{section_id}").select{|c| c['title'] == title}.first
         if found_case
           result= found_case['id']
         else
-          sub_section_id = /\d+/.match(tags.select{|tag| tag.name =~/sub_section/}.first.name)[0] 
-          result = create_new_case(project_id,suite_id,sub_section_id,test_case)['id']
+          result = create_new_case(project_id,suite_id,section_id,test_case)['id']
         end
       end
       return result
