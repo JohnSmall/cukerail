@@ -31,11 +31,11 @@ module Cukerail
       else
         sub_section_id_override=sub_section_id
       end
-      found_case = testrail_api_client.send_get("get_cases/#{project_id}&suite_id=#{suite_id}&#{sub_section_id_override}").select{|c| c['title'] == title}.first
+      found_case = testrail_api_client.send_get("get_cases/#{project_id}&suite_id=#{suite_id}&section_id=#{sub_section_id_override}").select{|c| c['title'] == title}.first
       if found_case
         result= found_case['id']
       else
-        test_case = create_new_case(scenario,background_steps,project_id,suite_id,sub_section_id)
+        test_case = create_new_case(scenario,background_steps,project_id,suite_id,sub_section_id_override)
         result = test_case ? test_case['id'] : nil
       end
       return result
