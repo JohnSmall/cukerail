@@ -25,11 +25,17 @@ module Cukerail
 
     def get_id(scenario,background_steps,project_id,suite_id,sub_section_id)
       title = get_name(scenario)
-      found_case = testrail_api_client.send_get("get_cases/#{project_id}&suite_id=#{suite_id}").select{|c| c['title'] == title}.first
+      scenario_level_sub_section = scenario['tags'].select{|j| j['name']=~/sub_section_\d+/}.last
+      if scenario_level_sub_section
+        sub_section_id_override = /sub_section_(\d+)/.match(scenario_level_sub_section['name'])[1]
+      else
+        sub_section_id_override=sub_section_id
+      end
+      found_case = testrail_api_client.send_get("get_cases/#{project_id}&suite_id=#{suite_id}&section_id=#{sub_section_id_override}").select{|c| c['title'] == title}.first
       if found_case
         result= found_case['id']
       else
-        test_case = create_new_case(scenario,background_steps,project_id,suite_id,sub_section_id)
+        test_case = create_new_case(scenario,background_steps,project_id,suite_id,sub_section_id_override)
         result = test_case ? test_case['id'] : nil
       end
       return result
@@ -105,17 +111,17 @@ module Cukerail
     end
 
     def defects(scenario)
-       if scenario['tags']
-         tags= [scenario['tags']].flatten.compact
-         tags.select{|tag| tag['name'] =~/(?:jira|defect)_/}.map{|ticket| /(?:jira|defect)_(\w+-\d+)$/.match(ticket['name'])[1]}.uniq.join(",")
-       end
+      if scenario['tags']
+        tags = [scenario['tags']].flatten.compact
+        tags.select{|tag| tag['name'] =~/(?:jira|defect)_/}.map{|ticket| /(?:jira|defect)_(\w+-\d+)$/.match(ticket['name'])[1]}.uniq.join(",")
+      end
     end
 
     def refs(scenario)
-       if scenario['tags']
-         tags= [scenario['tags']].flatten.compact
-         tags.select{|tag| tag['name'] =~/(?:jira|ref)_/}.map{|ticket| /(?:jira|ref)_(\w+-\d+)$/.match(ticket['name'])[1]}.uniq.join(",")
-       end
+      if scenario['tags']
+        tags = [scenario['tags']].flatten.compact
+        tags.select{|tag| tag['name'] =~/(?:jira|ref)_/}.map{|ticket| /(?:jira|ref)_(\w+-\d+)$/.match(ticket['name'])[1]}.uniq.join(",")
+      end
     end
 
     def send_result(scenario,id,run_id)

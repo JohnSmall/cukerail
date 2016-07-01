@@ -21,4 +21,5 @@ tmp
 *.a
 mkmf.log
 *.swp
+.byebug_history
 
