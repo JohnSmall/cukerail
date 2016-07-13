@@ -68,7 +68,7 @@ module TestRail
 
     private
     def _send_request(method, uri, data)
-      Retriable.retriable multiplier: 3 do
+      Retriable.retriable multiplier: 3,tries: 5 do
         url = URI.parse(@url + uri)
         if method == 'POST'
           request = Net::HTTP::Post.new(url.path + '?' + url.query)

@@ -66,7 +66,6 @@ module Cukerail
         project_id = /\d+/.match(tags.select{|tag| tag.name =~/project/}.last.name)[0] 
         suite_id = /\d+/.match(tags.select{|tag| tag.name =~/suite/}.last.name)[0] 
         section_id = /\d+/.match(tags.select{|tag| tag.name =~/sub_section/}.last.name)[0] 
-        puts section_id
         title = extract_title(test_case)
         found_case = testrail_api_client.send_get("get_cases/#{project_id}&suite_id=#{suite_id}&section_id=#{section_id}").select{|c| c['title'] == title}.first
         if found_case
