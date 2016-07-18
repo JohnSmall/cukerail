@@ -10,7 +10,7 @@ task :load_junit_results_to_test_suite do
 end
 
 desc "load Junit style xml results into tesrun,FILE=results_file, PROJECT_ID=X, SUITE_ID=Y, optional SUB_SECTION=Z, TESTRUN=A"
-task :load_junit_results_to_test_suite do
+task :load_junit_results_to_test_run do
  raise 'PROJECT_ID is required' unless ENV['PROJECT_ID']
  raise 'SUITE_ID is required' unless ENV['SUITE_ID']
  raise 'SUB_SECTION is required' unless ENV['SUB_SECTION']
