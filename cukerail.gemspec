@@ -22,6 +22,7 @@ Gem::Specification.new do |spec|
 
   spec.add_runtime_dependency "cucumber", "~> 2.3.2"
   spec.add_runtime_dependency 'retriable', '~> 2.1'
+  spec.add_runtime_dependency 'nokogiri', '~> 1.6'
 
   spec.add_development_dependency "bundler", "~> 1.6"
   spec.add_development_dependency "rake","~>10.4"

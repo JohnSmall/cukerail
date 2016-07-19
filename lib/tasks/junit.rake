@@ -17,6 +17,5 @@ end
 def check_command_line_parameters_are_present
  raise 'PROJECT_ID is required' unless ENV['PROJECT_ID']
  raise 'SUITE_ID is required' unless ENV['SUITE_ID']
- raise 'SUB_SECTION is required' unless ENV['SUB_SECTION']
  raise 'FILE is required' unless ENV['FILE']
 end

@@ -1,6 +1,7 @@
 require_relative "cukerail/version"
 require_relative "cukerail/testrail"
 require 'awesome_print'
+require 'nokogiri'
 module Cukerail
 
   class JunitSender
