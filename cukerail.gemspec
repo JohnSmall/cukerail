@@ -2,7 +2,6 @@
 lib = File.expand_path('../lib', __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
 require 'cukerail/version'
-require "cukerail/testrail"
 # require "cucumber_extensions/formatters/json/builder"
 
 Gem::Specification.new do |spec|
@@ -20,7 +19,7 @@ Gem::Specification.new do |spec|
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
-  spec.add_runtime_dependency "cucumber", "~> 2.3.2"
+  spec.add_runtime_dependency "cucumber"
   spec.add_runtime_dependency 'retriable', '~> 2.1'
   spec.add_runtime_dependency 'nokogiri', '~> 1.6'
 
