@@ -19,23 +19,31 @@ module Cukerail
     end
 
     def load
-      results.children.each do |child|
-        recurse_down(child)
-      end
+      recurse_down(results)
     end
 
     def recurse_down(element,level=0,parent_id=nil)
-       element.children.select{|n| n.name=='testcase'}.each do |testcase|
-         case_id = get_testcase_id(testcase,parent_id)
-         report_result(case_id,testcase) if run_id
-       end
-       element.children.select{|n| n.name=='testsuite'}.each do |testsuite|
-         section_id = get_section_id(testsuite,parent_id) if testsuite.attributes['name'].value.size > 0 
-         recurse_down(testsuite,level+1,(section_id || parent_id))
-       end
+      if element.name == 'document'
+        element.children.each do |child|
+          recurse_down(child)
+        end
+      end
+      if element.name == 'testsuite'
+        section_id = get_section_id(element,parent_id) 
+      end
+      element.children.select{|n| n.name=='testsuite'}.each do |testsuite|
+        recurse_down(testsuite,level+1,(section_id || parent_id))
+      end
+      element.children.select{|n| n.name=='testcase'}.each do |testcase|
+        case_id = get_testcase_id(testcase,(section_id || parent_id))
+        report_result(case_id,testcase) if run_id
+      end
     end
 
+    #return nil if a section cannot be fouind or created
     def get_section_id(testsuite,parent_id=nil)
+      # some elements don't have names
+      return nil if  testsuite.attributes['name'].value.empty?
       section = sections.detect{|s| s['name'] == testsuite.attributes['name'].value}
       unless section
         section =  testrail_api_client.send_post("add_section/#{project_id}",{suite_id:suite_id,name:testsuite.attributes['name'].value,parent_id:parent_id})
@@ -53,14 +61,14 @@ module Cukerail
     end
 
     def get_testcase_id(testcase,section_id)
-       unless testcases[section_id]
-         testcases[section_id] = testrail_api_client.send_get("get_cases/#{project_id}&suite_id=#{suite_id}&section_id=#{section_id}")
-       end
-       unless testcases[section_id].detect{|tc| tc['title'] == testcase.attributes['name'].value}
-         new_tc = testrail_api_client.send_post("add_case/#{section_id}",{title:testcase.attributes['name'].value,type_id:1})
-         testcases[section_id] << new_tc
-       end
-       testcases[section_id].detect{|tc| tc['title'] == testcase.attributes['name'].value}['id']
+      unless testcases[section_id]
+        testcases[section_id] = testrail_api_client.send_get("get_cases/#{project_id}&suite_id=#{suite_id}&section_id=#{section_id}")
+      end
+      unless testcases[section_id].detect{|tc| tc['title'] == testcase.attributes['name'].value}
+        new_tc = testrail_api_client.send_post("add_case/#{section_id}",{title:testcase.attributes['name'].value,type_id:1})
+        testcases[section_id] << new_tc
+      end
+      testcases[section_id].detect{|tc| tc['title'] == testcase.attributes['name'].value}['id']
     end
 
     def report_result(case_id,testcase)
