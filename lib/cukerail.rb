@@ -65,7 +65,7 @@ module Cukerail
         tags = test_case.tags
         project_id = /\d+/.match(tags.select{|tag| tag.name =~/project/}.last.name)[0] 
         suite_id = /\d+/.match(tags.select{|tag| tag.name =~/suite/}.last.name)[0] 
-        section_id = /\d+/.match(tags.select{|tag| tag.name =~/sub_section/}.last.name)[0] 
+        section_id = /\d+/.match(tags.select{|tag| tag.name =~/sub_section/}.last.name)[0]
         title = extract_title(test_case)
         found_case = testrail_api_client.send_get("get_cases/#{project_id}&suite_id=#{suite_id}&section_id=#{section_id}").select{|c| c['title'] == title}.first
         if found_case
@@ -193,8 +193,36 @@ module Cukerail
       type_ids = [1]
       type_ids << 7  if test_case.tags.any?{|tag| tag.name =~/manual/}
       type_ids << 13 if test_case.tags.any?{|tag| tag.name =~/on_hold/}
+      type = test_case.tags.select{|tag| tag.name =~/type/}.last.name
+      type_name = type.gsub('@type_','')
+      type_ids << case type_name
+                    when 'Functionality'
+                      2
+                    when 'Performance'
+                      3
+                    when 'Regression'
+                      4
+                    when 'Usability'
+                      5
+                    when 'Other'
+                      6
+                    when 'Certification'
+                      7
+                    when 'Manual'
+                      8
+                    when 'Automatable'
+                      9
+                    when 'Not applicable/ Archive'
+                      10
+                    when 'User Acceptance'
+                      11
+                    when 'Access'
+                      12
+                   else
+                     1
+                  end
       #get the highest precedence type found in the tags. E.g. if it's @on_hold and @manual it selects 13 for on hold
-      ([13,7,1] & type_ids).first
+      ([13,12,11,10,9,8,7,6,5,4,3,2,1] & type_ids).first
     end
 
     def test_case_data(test_case)
@@ -205,7 +233,6 @@ module Cukerail
         str += g_step.multiline_arg.raw.map{|l|"\n| #{l.join(' | ')} |"}.join if g_step.multiline_arg.data_table?
         str
       end.join("\n")
-
       {'title'=>extract_title(test_case),
               'type_id'=>type_id(test_case),
               'custom_steps'=>steps_as_string,
