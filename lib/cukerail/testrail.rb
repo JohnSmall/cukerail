@@ -1,3 +1,8 @@
+require 'net/http'
+require 'net/https'
+require 'uri'
+require 'json'
+require 'retriable'
 #
 # TestRail API binding for Ruby (API v2, available since TestRail 3.0)
 #
@@ -8,13 +13,10 @@
 #
 # Copyright Gurock Software GmbH
 #
-
-require 'net/http'
-require 'net/https'
-require 'uri'
-require 'json'
-require 'retriable'
 module TestRail
+  # TestRail APIClient
+  # 
+  # This class handles communication to Testrail via their API. It's provided by Testrail
   class APIClient
     @url = ''
     @user = ''
@@ -67,6 +69,10 @@ module TestRail
     end
 
     private
+    # send a request to Testrail
+    # @param method [string]
+    # @param uri [string]
+    # @param data [Hash]
     def _send_request(method, uri, data)
       Retriable.retriable multiplier: 2,tries: 10 do
         url = URI.parse(@url + uri)
@@ -107,7 +113,7 @@ module TestRail
       end
     end
   end
-
+  # Testrail APIError 
   class APIError < StandardError
   end
 end

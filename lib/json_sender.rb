@@ -4,8 +4,12 @@ require 'json' unless JSON
 require 'awesome_print'
 module Cukerail
 
+  # Used to parase a json results file and send it to Testrail
   class JsonSender
     attr_reader :testrail_api_client,:results
+
+    #initialize the sender class with the name of the file we will be reading from
+    # @param json_file [string]
     def initialize(json_file)
       if %w(BASE_URL USER PASSWORD).map{|e| ENV["TESTRAIL_#{e}"]}.any?{|e| e=='' || !e}
         raise 'You need to setup Testrail environment parameters see https://bbcworldwide.atlassian.net/wiki/display/BAR/Installing+and+Running+Cukerail' 
@@ -14,6 +18,7 @@ module Cukerail
       @results = JSON.parse(File.read(json_file)).select{|f| f['tags']}
     end
 
+    # each feature file. Yield to a block
     def each_feature
       results.each do |feature|
         scenarios = feature['elements'].reject{|e| e['keyword']=='Background'}.select{|e| e['type'] == 'scenario'}
@@ -22,7 +27,13 @@ module Cukerail
       end
     end
 
-
+    # get the testcase id or create it if it doesn't exist
+    # @param scenario [Scenario]
+    # @param background_steps [Array]
+    # @param project_id [integer]
+    # @param suite_id [integer]
+    # @param sub_section_id [integer]
+    # @return [integer]
     def get_id(scenario,background_steps,project_id,suite_id,sub_section_id)
       title = get_name(scenario)
       scenario_level_sub_section = scenario['tags'].select{|j| j['name']=~/sub_section_\d+/}.last
@@ -41,6 +52,10 @@ module Cukerail
       return result
     end
 
+    # extract data from the feature file
+    # @param feature [Hash]
+    #
+    # @return [project_id,suite_id, sub_section_id, background_steps]
     def extract_top_level_data(feature)
       puts "feature file #{feature['uri']}"
       project_id = feature['tags'].select{|j| j['name']=~/project_\d+/}.map{|j| /project_(\d+)/.match(j['name'])[1].to_i}.first
@@ -51,6 +66,9 @@ module Cukerail
       return project_id,suite_id,sub_section_id,background_steps
     end
 
+    # get the name of the scenario, taking account of Scenario Outline Examples
+    # @param scenario [Hash]
+    # @return [string]
     def get_name(scenario)
       base_name = scenario['name']
       # We only extrapolate example data for scenario outlines
@@ -79,6 +97,12 @@ module Cukerail
       [requirement, base_name, outline_number].join(' ').strip
     end
 
+    # create a new test case in Testrail
+    # @param scenario [Hash]
+    # @param background_steps [Array]
+    # @param project_id [Integer]
+    # @param suite_id [Integer]
+    # @param sub_section_id [Integer]
     def create_new_case(scenario,background_steps,project_id,suite_id,sub_section_id)
       data = prepare_data(scenario,background_steps)
       testrail_api_client.send_post("add_case/#{sub_section_id || suite_id}", data)
@@ -87,6 +111,11 @@ module Cukerail
       return nil
     end
 
+
+    # send the steps in the scenario to Testrail
+    # @param scenario [Hash]
+    # @param background_steps [Array]
+    # @param testcase_id [Integer]
     def send_steps(scenario,background_steps,testcase_id)
       data = prepare_data(scenario,background_steps)
       testrail_api_client.send_post("update_case/#{testcase_id}",data)
@@ -95,6 +124,10 @@ module Cukerail
       return nil
     end
 
+    # bundle up a data hash ready to send to Testrail for the testcase
+    # @param scenario [Hash]
+    # @param background_steps [Array]
+    # @return [Hash]
     def prepare_data(scenario,background_steps)
       steps = background_steps + "\n" + scenario['steps'].map{|s| s['keyword']+s['name']}.join("\n")
       type_ids = [1]
@@ -110,20 +143,30 @@ module Cukerail
       }
     end
 
+    # extract the defect tags from the scenario
+    # @param scenario [Hash]
+    # @return [Array]
     def defects(scenario)
       if scenario['tags']
         tags = [scenario['tags']].flatten.compact
         tags.select{|tag| tag['name'] =~/(?:jira|defect)_/}.map{|ticket| /(?:jira|defect)_(\w+-\d+)$/.match(ticket['name'])[1]}.uniq.join(",")
       end
     end
-
+ 
+    # extract reference tags from the scenario
+    # @param scenario [Hash]
+    # @return [Array]
     def refs(scenario)
       if scenario['tags']
         tags = [scenario['tags']].flatten.compact
         tags.select{|tag| tag['name'] =~/(?:jira|ref)_/}.map{|ticket| /(?:jira|ref)_(\w+-\d+)$/.match(ticket['name'])[1]}.uniq.join(",")
       end
     end
-
+    
+    # Send the result to Testrail
+    # @param scenario [Hash]
+    # @param id [Integer]
+    # @param run_id [Integer]
     def send_result(scenario,id,run_id)
       error_line = scenario['steps'].select{|s| s['result']['status'] != 'passed'}.first 
       if error_line
@@ -167,14 +210,23 @@ module Cukerail
       end
     end
 
+    # get the Testrail run from the Testrail run id
+    # @param run_id [Integer]
+    # @return [json]
     def get_run(run_id)
       testrail_api_client.send_get("get_run/#{run_id}")
     end
 
+    # get all the tests in a ren from Testrail
+    # @param run_id [integer]
+    # @return [json]
     def get_tests_in_a_run(run_id)
       testrail_api_client.send_get("get_tests/#{run_id}")
     end
 
+    # update a Testrail test run
+    # @param run_id [integer]
+    # @param case_ids [Array]
     def update_run(run_id,case_ids)
       run = get_run(run_id)
       begin
@@ -188,12 +240,19 @@ module Cukerail
       end
     end
 
+    #update a Testrail test plan - these have to be treadted differently to plain test runs
+    # @param plan_id [integer]
+    # @param run_id [integer]
+    # @param case_ids [Array]
     def update_plan(plan_id,run_id,case_ids)
       test_plan = testrail_api_client.send_get("get_plan/#{plan_id}")
       entry_id = test_plan['entries'].select{|e| e['runs'].any?{|r| r['id']==run_id}}.first['id']
       testrail_api_client.send_post("update_plan_entry/#{plan_id}/#{entry_id}",case_ids)
     end
 
+    # remove a case from a Testrail test run
+    # @param testcase [Hash]
+    # @param run_id [integer]
     def remove_case_from_test_run(testcase,run_id)
       testcase_id = get_id(testcase)
       run = get_run(run_id)
@@ -203,6 +262,9 @@ module Cukerail
       end
     end
 
+    # add a new case to a Testrail test run
+    # @param testcase_id [integer]
+    # @param run_id [integer]
     def add_case_to_test_run(testcase_id,run_id)
       run = get_run(run_id)
       unless run['include_all']
@@ -212,6 +274,9 @@ module Cukerail
       end
     end
 
+    # remove a block of test cases from a testrun
+    # @param testcases [Array]
+    # @param run_id [integer]
     def remove_all_except_these_cases_from_testrun(testcases,run_id)
       run = get_run(run_id)
       unless run['include_all']
@@ -220,6 +285,10 @@ module Cukerail
       end
     end
 
+    # remove all except an array of cases from a test suite
+    # @param testcases [Array]
+    # @param project_id [integer]
+    # @param suite_id [integer]
     def remove_all_except_these_cases_from_suite(testcases,project_id,suite_id)
       puts '=== testcases === '
       puts testcases
